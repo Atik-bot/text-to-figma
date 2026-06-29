@@ -1,0 +1,19 @@
+{
+  "name": "figma-plugin",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+ "scripts": {
+  "typecheck": "tsc --noEmit",
+  "build": "npm run typecheck && esbuild src/code.ts --bundle --outfile=dist/code.js --target=es2017"
+},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.x.x",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.x.x"
+  }
+}
+

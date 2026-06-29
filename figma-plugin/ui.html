@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        font-family: Inter, sans-serif;
+        margin: 0;
+        padding: 16px;
+        box-sizing: border-box;
+      }
+      h2 {
+        font-size: 14px;
+        margin: 0 0 8px 0;
+      }
+      textarea {
+        width: 100%;
+        height: 280px;
+        box-sizing: border-box;
+        font-family: monospace;
+        font-size: 11px;
+        padding: 8px;
+        resize: vertical;
+      }
+      button {
+        width: 100%;
+        margin-top: 10px;
+        padding: 10px;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      button:disabled {
+        background: #94a3b8;
+        cursor: not-allowed;
+      }
+      #status {
+        margin-top: 10px;
+        font-size: 12px;
+        color: #475569;
+      }
+      #status.error {
+        color: #dc2626;
+      }
+      #status.success {
+        color: #16a34a;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Paste design JSON</h2>
+    <textarea id="jsonInput" placeholder="Paste your schema JSON here..."></textarea>
+    <button id="generateBtn">Generate design</button>
+    <div id="status"></div>
+
+    <script>
+      const textarea = document.getElementById("jsonInput");
+      const button = document.getElementById("generateBtn");
+      const status = document.getElementById("status");
+
+      button.addEventListener("click", () => {
+        status.className = "";
+        status.textContent = "";
+
+        let parsed;
+        try {
+          parsed = JSON.parse(textarea.value);
+        } catch (err) {
+          status.className = "error";
+          status.textContent = "Invalid JSON: " + err.message;
+          return;
+        }
+
+        button.disabled = true;
+        status.textContent = "Generating...";
+
+        // Send the parsed schema to code.ts. This is the only way data
+        // crosses from the UI world into the sandbox world.
+        parent.postMessage(
+          { pluginMessage: { type: "generate", payload: parsed } },
+          "*"
+        );
+      });
+
+      // Listens for replies coming back from code.ts.
+      window.onmessage = (event) => {
+        const msg = event.data.pluginMessage;
+        if (!msg) return;
+
+        button.disabled = false;
+
+        if (msg.type === "success") {
+          status.className = "success";
+          status.textContent = "Design generated successfully.";
+        }
+
+        if (msg.type === "error") {
+          status.className = "error";
+          status.textContent = "Error: " + msg.message;
+        }
+      };
+    </script>
+  </body>
+</html>

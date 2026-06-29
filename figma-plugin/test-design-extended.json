@@ -1,0 +1,181 @@
+{
+  "designTokens": {
+    "colors": {
+      "primary": "#2563EB",
+      "background": "#FFFFFF",
+      "surface": "#F1F5F9",
+      "textPrimary": "#0F172A",
+      "textSecondary": "#475569",
+      "muted": "#94A3B8"
+    },
+    "typography": {
+      "heading": { "fontFamily": "Inter", "fontWeight": 700, "fontSize": 40 },
+      "subheading": { "fontFamily": "Inter", "fontWeight": 600, "fontSize": 20 },
+      "body": { "fontFamily": "Inter", "fontWeight": 400, "fontSize": 16 },
+      "caption": { "fontFamily": "Inter", "fontWeight": 400, "fontSize": 12 }
+    },
+    "spacing": {
+      "xl": 80,
+      "lg": 48,
+      "md": 32,
+      "sm": 24,
+      "xs": 16
+    }
+  },
+  "page": {
+    "name": "Extended Design",
+    "frame": {
+      "width": 1280,
+      "background": "background",
+      "sections": [
+        {
+          "type": "section",
+          "variant": "hero",
+          "id": "hero-1",
+          "layout": {
+            "direction": "vertical",
+            "align": "center",
+            "padding": "xl",
+            "gap": "md"
+          },
+          "children": [
+            {
+              "type": "heading",
+              "text": "Turn text into Figma designs",
+              "style": "heading",
+              "color": "textPrimary"
+            },
+            {
+              "type": "text",
+              "text": "Paste a JSON schema and watch your design materialize — no drag-and-drop required.",
+              "style": "body",
+              "color": "textSecondary"
+            },
+            {
+              "type": "button",
+              "text": "Get started free"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "variant": "features",
+          "id": "features-1",
+          "layout": {
+            "direction": "horizontal",
+            "align": "start",
+            "padding": "xl",
+            "gap": "md"
+          },
+          "children": [
+            {
+              "type": "card",
+              "title": "Schema-driven",
+              "description": "Define every layer of your design in plain JSON. No mouse required."
+            },
+            {
+              "type": "card",
+              "title": "Design tokens",
+              "description": "Colors, typography, and spacing come from a single source of truth."
+            },
+            {
+              "type": "card",
+              "title": "Auto layout",
+              "description": "Frames stack and resize automatically using Figma's native auto layout."
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "variant": "pricing",
+          "id": "pricing-1",
+          "layout": {
+            "direction": "horizontal",
+            "align": "start",
+            "padding": "xl",
+            "gap": "md"
+          },
+          "children": [
+            {
+              "type": "pricingCard",
+              "title": "Starter",
+              "price": "$0/mo",
+              "features": ["5 designs per month", "JSON schema editor", "Community support"],
+              "ctaLabel": "Start free"
+            },
+            {
+              "type": "pricingCard",
+              "title": "Pro",
+              "price": "$29/mo",
+              "features": ["Unlimited designs", "All section variants", "Priority support", "Team sharing"],
+              "ctaLabel": "Upgrade to Pro"
+            },
+            {
+              "type": "pricingCard",
+              "title": "Enterprise",
+              "price": "$99/mo",
+              "features": ["Unlimited designs", "Custom variants", "Dedicated support", "SSO & audit logs"],
+              "ctaLabel": "Contact sales"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "variant": "testimonials",
+          "id": "testimonials-1",
+          "layout": {
+            "direction": "horizontal",
+            "align": "start",
+            "padding": "xl",
+            "gap": "md"
+          },
+          "children": [
+            {
+              "type": "testimonialCard",
+              "quote": "We cut our design handoff time in half. Pasting JSON and seeing a live frame is genuinely magical.",
+              "author": "Sara Kim",
+              "authorRole": "Lead Designer, Vercel"
+            },
+            {
+              "type": "testimonialCard",
+              "quote": "The design-token layer means every frame is on-brand from the first render. No cleanup needed.",
+              "author": "James Okafor",
+              "authorRole": "Frontend Engineer, Stripe"
+            },
+            {
+              "type": "testimonialCard",
+              "quote": "Auto layout means I can prototype a full page in minutes. This is how tools should work.",
+              "author": "Priya Nair",
+              "authorRole": "Product Manager, Linear"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "variant": "footer",
+          "id": "footer-1",
+          "layout": {
+            "direction": "horizontal",
+            "align": "center",
+            "padding": "lg",
+            "gap": "sm"
+          },
+          "children": [
+            {
+              "type": "text",
+              "text": "© 2026 Text-to-Figma. All rights reserved.",
+              "style": "body",
+              "color": "textSecondary"
+            },
+            {
+              "type": "text",
+              "text": "Privacy · Terms · Contact",
+              "style": "body",
+              "color": "textSecondary"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Text-to-Figma Generator",
+  "id": "text-to-figma-local-dev",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  }
+}
