@@ -61,6 +61,118 @@
       const button = document.getElementById("generateBtn");
       const status = document.getElementById("status");
 
+      // Validates the parsed JSON against the DesignSchema shape defined in
+      // src/types.ts. Runs client-side so malformed payloads are caught before
+      // they reach code.ts — where a missing field would crash silently inside
+      // the Figma sandbox with no useful error message shown to the user.
+      // Collects ALL problems rather than stopping at the first one.
+      function validateSchema(d) {
+        const errors = [];
+        const SECTION_VARIANTS = ["hero", "features", "footer", "pricing", "testimonials"];
+        const COMPONENT_TYPES  = ["heading", "text", "button", "card", "pricingCard", "testimonialCard"];
+        const DIRECTIONS       = ["horizontal", "vertical"];
+        const ALIGNS           = ["start", "center", "end"];
+
+        function isObj(v) { return v !== null && typeof v === "object" && !Array.isArray(v); }
+
+        // ── designTokens ─────────────────────────────────────────────────────
+        if (!isObj(d.designTokens)) {
+          errors.push("designTokens must be an object");
+        } else {
+          const dt = d.designTokens;
+          if (!isObj(dt.colors))
+            errors.push("designTokens.colors must be an object");
+          if (!isObj(dt.typography))
+            errors.push("designTokens.typography must be an object");
+          if (!isObj(dt.spacing))
+            errors.push("designTokens.spacing must be an object");
+          else {
+            for (const [k, v] of Object.entries(dt.spacing)) {
+              if (typeof v !== "number")
+                errors.push("designTokens.spacing." + k + " must be a number, got " + typeof v);
+            }
+          }
+        }
+
+        // ── page ─────────────────────────────────────────────────────────────
+        if (!isObj(d.page)) {
+          errors.push("page must be an object");
+        } else {
+          if (typeof d.page.name !== "string")
+            errors.push("page.name must be a string");
+
+          if (!isObj(d.page.frame)) {
+            errors.push("page.frame must be an object");
+          } else {
+            const frame = d.page.frame;
+            if (typeof frame.width !== "number")
+              errors.push("page.frame.width must be a number");
+            if (typeof frame.background !== "string")
+              errors.push("page.frame.background must be a string");
+
+            // background key must exist in designTokens.colors
+            if (typeof frame.background === "string" &&
+                isObj(d.designTokens && d.designTokens.colors) &&
+                !(frame.background in d.designTokens.colors))
+              errors.push(
+                "page.frame.background \"" + frame.background +
+                "\" is not a key in designTokens.colors"
+              );
+
+            if (!Array.isArray(frame.sections)) {
+              errors.push("page.frame.sections must be an array");
+            } else {
+              frame.sections.forEach(function(sec, si) {
+                const pfx = "sections[" + si + "]";
+
+                if (sec.type !== "section")
+                  errors.push(pfx + ".type must be \"section\", got " + JSON.stringify(sec.type));
+
+                if (!SECTION_VARIANTS.includes(sec.variant))
+                  errors.push(
+                    pfx + ".variant must be one of " + SECTION_VARIANTS.join("/") +
+                    ", got " + JSON.stringify(sec.variant)
+                  );
+
+                if (typeof sec.id !== "string" || sec.id === "")
+                  errors.push(pfx + ".id must be a non-empty string");
+
+                // layout
+                if (!isObj(sec.layout)) {
+                  errors.push(pfx + ".layout must be an object");
+                } else {
+                  const lay = sec.layout;
+                  if (!DIRECTIONS.includes(lay.direction))
+                    errors.push(pfx + ".layout.direction must be horizontal/vertical");
+                  if (!ALIGNS.includes(lay.align))
+                    errors.push(pfx + ".layout.align must be start/center/end");
+                  if (typeof lay.padding !== "string")
+                    errors.push(pfx + ".layout.padding must be a string");
+                  if (typeof lay.gap !== "string")
+                    errors.push(pfx + ".layout.gap must be a string");
+                }
+
+                // children
+                if (!Array.isArray(sec.children)) {
+                  errors.push(pfx + ".children must be an array");
+                } else {
+                  sec.children.forEach(function(comp, ci) {
+                    const cpfx = pfx + ".children[" + ci + "]";
+                    if (!COMPONENT_TYPES.includes(comp.type))
+                      errors.push(
+                        cpfx + ".type must be one of " + COMPONENT_TYPES.join("/") +
+                        ", got " + JSON.stringify(comp.type)
+                      );
+                  });
+                }
+              });
+            }
+          }
+        }
+
+        return errors;
+      }
+
       button.addEventListener("click", () => {
         status.className = "";
         status.textContent = "";
@@ -71,6 +183,13 @@
         } catch (err) {
           status.className = "error";
           status.textContent = "Invalid JSON: " + err.message;
+          return;
+        }
+
+        const problems = validateSchema(parsed);
+        if (problems.length > 0) {
+          status.className = "error";
+          status.textContent = problems.length + " schema error(s):\n• " + problems.join("\n• ");
           return;
         }
 
