@@ -4,7 +4,13 @@ import { buildComponent } from "./components";
 
 // Builds one section (hero / features / footer) as a Figma frame with
 // auto layout, then appends every child component defined in the schema.
-function buildSection(section: SectionNode, tokens: DesignTokens): FrameNode {
+// pageBgHex is the page background color — sections have no fill of their own,
+// so it's the effective background for section-level text contrast checks.
+function buildSection(
+  section: SectionNode,
+  tokens: DesignTokens,
+  pageBgHex: string
+): FrameNode {
   const frame = figma.createFrame();
   frame.name = `Section: ${section.variant}`;
 
@@ -20,7 +26,7 @@ function buildSection(section: SectionNode, tokens: DesignTokens): FrameNode {
   );
 
   for (const componentData of section.children) {
-    const node = buildComponent(componentData, tokens);
+    const node = buildComponent(componentData, tokens, pageBgHex);
     frame.appendChild(node);
   }
 
@@ -44,7 +50,7 @@ export function buildPage(schema: DesignSchema): FrameNode {
   pageFrame.fills = [{ type: "SOLID", color: hexToRgb(bgHex) }];
 
   for (const sectionData of schema.page.frame.sections) {
-    const sectionFrame = buildSection(sectionData, schema.designTokens);
+    const sectionFrame = buildSection(sectionData, schema.designTokens, bgHex);
     pageFrame.appendChild(sectionFrame);
     // FILL sizing can only be set after the child is attached to an auto-layout parent.
     sectionFrame.layoutSizingHorizontal = "FILL";

@@ -1,22 +1,57 @@
 import { ComponentNode, DesignTokens } from "./types";
-import { hexToRgb, applyAutoLayout } from "./helpers";
+import { hexToRgb, applyAutoLayout, ensureReadableTextColor } from "./helpers";
 
-// Figma requires fonts to be explicitly "loaded" before you can create or
-// edit text with them. This is a one-time async step we'll call before
-// any text node creation happens.
-export async function loadFonts(): Promise<void> {
+// Tracks font families that failed to load during loadFonts(). Any family in
+// this set gets substituted with "Inter" when a text node is created.
+// Module-level so createTextNode() can read it without threading it through
+// every call in the component tree.
+const _failedFamilies = new Set<string>();
+
+// Loads every font family referenced in the schema's typography tokens, plus
+// Inter unconditionally as the safe fallback. Each (family, style) pair is
+// attempted individually — if any style for a given family fails, that family
+// is flagged and all nodes using it will render in Inter instead.
+export async function loadFonts(
+  typography: DesignTokens["typography"]
+): Promise<void> {
+  _failedFamilies.clear();
+
+  // Inter is always loaded — it's the guaranteed fallback.
   await figma.loadFontAsync({ family: "Inter", style: "Regular" });
   await figma.loadFontAsync({ family: "Inter", style: "Bold" });
   await figma.loadFontAsync({ family: "Inter", style: "Semi Bold" });
+
+  // Collect the unique font families the schema actually uses.
+  const families = new Set<string>(
+    Object.values(typography).map((t) => t.fontFamily)
+  );
+  families.delete("Inter"); // already loaded above
+
+  const styles = ["Regular", "Bold", "Semi Bold"] as const;
+
+  for (const family of families) {
+    for (const style of styles) {
+      try {
+        await figma.loadFontAsync({ family, style });
+      } catch {
+        console.warn(
+          `loadFonts: "${family}" ${style} unavailable in this Figma instance — falling back to Inter`
+        );
+        _failedFamilies.add(family);
+      }
+    }
+  }
 }
 
 // Creates a single text node and applies a named typography style + color
-// from our design tokens.
+// from our design tokens. parentBgHex is the actual background color the text
+// will render on — used to guarantee WCAG AA contrast (≥ 4.5).
 function createTextNode(
   content: string,
   styleName: string,
   colorName: string,
-  tokens: DesignTokens
+  tokens: DesignTokens,
+  parentBgHex: string
 ): TextNode {
   const node = figma.createText();
   const typeStyle = tokens.typography[styleName] ?? tokens.typography.body;
@@ -29,12 +64,24 @@ function createTextNode(
       ? "Semi Bold"
       : "Regular";
 
-  node.fontName = { family: typeStyle.fontFamily, style: weightToStyle };
+  // If the requested family failed to load, substitute Inter so the node
+  // creation always succeeds rather than throwing.
+  const family = _failedFamilies.has(typeStyle.fontFamily)
+    ? "Inter"
+    : typeStyle.fontFamily;
+
+  node.fontName = { family, style: weightToStyle };
   node.fontSize = typeStyle.fontSize;
   node.characters = content;
 
-  const hex = tokens.colors[colorName] ?? tokens.colors.textPrimary;
-  node.fills = [{ type: "SOLID", color: hexToRgb(hex) }];
+  const rawHex = tokens.colors[colorName] ?? tokens.colors["textPrimary"] ?? "#000000";
+  const safeHex = ensureReadableTextColor(rawHex, parentBgHex);
+  if (safeHex !== rawHex) {
+    console.warn(
+      `contrast: "${content}" color corrected ${rawHex} → ${safeHex} (bg ${parentBgHex})`
+    );
+  }
+  node.fills = [{ type: "SOLID", color: hexToRgb(safeHex) }];
 
   return node;
 }
@@ -49,11 +96,13 @@ function createButtonNode(
   button.name = `Button: ${label}`;
   applyAutoLayout(button, "horizontal", "center", 16, 8);
   button.cornerRadius = 8;
+  const buttonBgHex = tokens.colors["primary"] ?? "#000000";
   button.fills = [
-    { type: "SOLID", color: hexToRgb(tokens.colors.primary) },
+    { type: "SOLID", color: hexToRgb(buttonBgHex) },
   ];
 
-  const text = createTextNode(label, "body", "background", tokens);
+  // Button label is checked against the button's own fill color, not the page bg.
+  const text = createTextNode(label, "body", "background", tokens, buttonBgHex);
   button.appendChild(text);
 
   return button;
@@ -69,12 +118,13 @@ function createCardNode(
   const card = figma.createFrame();
   card.name = `Card: ${title}`;
   applyAutoLayout(card, "vertical", "start", 24, 12);
-  card.fills = [{ type: "SOLID", color: hexToRgb(tokens.colors.surface) }];
+  const cardBgHex = tokens.colors["surface"] ?? "#FFFFFF";
+  card.fills = [{ type: "SOLID", color: hexToRgb(cardBgHex) }];
   card.cornerRadius = 12;
   card.resize(280, card.height);
 
-  const titleNode = createTextNode(title, "subheading", "textPrimary", tokens);
-  const descNode = createTextNode(description, "body", "textSecondary", tokens);
+  const titleNode = createTextNode(title, "subheading", "textPrimary", tokens, cardBgHex);
+  const descNode = createTextNode(description, "body", "textSecondary", tokens, cardBgHex);
   descNode.resize(232, descNode.height);
   descNode.textAutoResize = "HEIGHT";
 
@@ -94,7 +144,8 @@ function createPricingCardNode(
   const card = figma.createFrame();
   card.name = `PricingCard: ${component.title ?? ""}`;
   applyAutoLayout(card, "vertical", "center", 24, 12);
-  card.fills = [{ type: "SOLID", color: hexToRgb(tokens.colors.surface) }];
+  const cardBgHex = tokens.colors["surface"] ?? "#FFFFFF";
+  card.fills = [{ type: "SOLID", color: hexToRgb(cardBgHex) }];
   card.cornerRadius = 12;
   card.resize(280, card.height);
 
@@ -102,7 +153,8 @@ function createPricingCardNode(
     component.title ?? "",
     "subheading",
     "textPrimary",
-    tokens
+    tokens,
+    cardBgHex
   );
   card.appendChild(titleNode);
 
@@ -110,7 +162,8 @@ function createPricingCardNode(
     component.price ?? "",
     "heading",
     "primary",
-    tokens
+    tokens,
+    cardBgHex
   );
   card.appendChild(priceNode);
 
@@ -119,7 +172,8 @@ function createPricingCardNode(
       `- ${feature}`,
       "body",
       "textSecondary",
-      tokens
+      tokens,
+      cardBgHex
     );
     card.appendChild(featureNode);
   }
@@ -139,7 +193,8 @@ function createTestimonialCardNode(
   const card = figma.createFrame();
   card.name = `TestimonialCard: ${component.author ?? ""}`;
   applyAutoLayout(card, "vertical", "start", 24, 12);
-  card.fills = [{ type: "SOLID", color: hexToRgb(tokens.colors.surface) }];
+  const cardBgHex = tokens.colors["surface"] ?? "#FFFFFF";
+  card.fills = [{ type: "SOLID", color: hexToRgb(cardBgHex) }];
   card.cornerRadius = 12;
   card.resize(280, card.height);
 
@@ -147,7 +202,8 @@ function createTestimonialCardNode(
     component.quote ?? "",
     "body",
     "textPrimary",
-    tokens
+    tokens,
+    cardBgHex
   );
   quoteNode.resize(232, quoteNode.height);
   quoteNode.textAutoResize = "HEIGHT";
@@ -157,7 +213,8 @@ function createTestimonialCardNode(
     component.author ?? "",
     "subheading",
     "textPrimary",
-    tokens
+    tokens,
+    cardBgHex
   );
   card.appendChild(authorNode);
 
@@ -165,7 +222,8 @@ function createTestimonialCardNode(
     component.authorRole ?? "",
     "body",
     "textSecondary",
-    tokens
+    tokens,
+    cardBgHex
   );
   card.appendChild(roleNode);
 
@@ -174,9 +232,13 @@ function createTestimonialCardNode(
 
 // Dispatches on `type` — the discriminated union pattern from Module 2 —
 // to decide which creation function to call for a given schema component.
+// sectionBgHex is the effective background of the containing section (the page
+// background, since sections have no fill of their own) — used for contrast
+// checking on section-level heading and text nodes.
 export function buildComponent(
   component: ComponentNode,
-  tokens: DesignTokens
+  tokens: DesignTokens,
+  sectionBgHex: string
 ): SceneNode {
   switch (component.type) {
     case "heading":
@@ -184,14 +246,16 @@ export function buildComponent(
         component.text ?? "",
         component.style ?? "heading",
         component.color ?? "textPrimary",
-        tokens
+        tokens,
+        sectionBgHex
       );
     case "text":
       return createTextNode(
         component.text ?? "",
         component.style ?? "body",
         component.color ?? "textSecondary",
-        tokens
+        tokens,
+        sectionBgHex
       );
     case "button":
       return createButtonNode(component.text ?? "Button", tokens);

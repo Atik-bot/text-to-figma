@@ -12,7 +12,7 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
     try {
       const schema = msg.payload as DesignSchema;
 
-      await loadFonts();
+      await loadFonts(schema.designTokens.typography);
       const pageFrame = buildPage(schema);
 
       // Move the viewport to show the newly created frame, and select it,
